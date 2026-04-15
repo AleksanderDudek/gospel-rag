@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+*.egg
+.uv/
+# uv.lock is intentionally tracked for reproducible builds
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+.mypy_cache/
+.ruff_cache/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+**/.DS_Store
+Thumbs.db
+
+# Alembic (keep versions, ignore local state)
+alembic/versions/__pycache__/
+
+# Node / Next.js
+web/node_modules/
+web/.next/
+web/out/
+web/.pnpm-store/
+# pnpm-lock.yaml is intentionally tracked — web/Dockerfile uses --frozen-lockfile
+web/.env.local
+web/.env.*.local
+
+# Playwright
+web/test-results/
+web/playwright-report/
+web/.playwright/
+
+# Docker
+*.tar
+
+# Terraform
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/.terraform.lock.hcl
+terraform/secrets.auto.tfvars
+
+# Data / indexes
+data/raw/
+data/embeddings_cache.pkl
+
+# Misc
+*.tmp
+.turbo/

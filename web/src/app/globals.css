@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 10% 8%;
+    --foreground: 210 20% 92%;
+
+    --card: 220 10% 11%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 220 10% 11%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 210 100% 60%;
+    --primary-foreground: 220 10% 8%;
+
+    --secondary: 220 10% 18%;
+    --secondary-foreground: 210 20% 82%;
+
+    --muted: 220 10% 16%;
+    --muted-foreground: 220 10% 50%;
+
+    --accent: 220 10% 18%;
+    --accent-foreground: 210 20% 92%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 10% 18%;
+    --input: 220 10% 18%;
+    --ring: 210 100% 60%;
+
+    --sidebar: 220 10% 6%;
+    --sidebar-foreground: 210 20% 82%;
+    --sidebar-border: 220 10% 14%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Prose styles for assistant message markdown */
+.prose-gospel {
+  @apply text-foreground;
+}
+.prose-gospel p {
+  @apply mb-3 leading-relaxed;
+}
+.prose-gospel p:last-child {
+  @apply mb-0;
+}
+.prose-gospel ul,
+.prose-gospel ol {
+  @apply mb-3 ml-5;
+}
+.prose-gospel li {
+  @apply mb-1;
+}
+.prose-gospel strong {
+  @apply font-semibold text-foreground;
+}
+.prose-gospel em {
+  @apply italic;
+}
+.prose-gospel code {
+  @apply rounded bg-muted px-1.5 py-0.5 font-mono text-sm;
+}
+.prose-gospel pre {
+  @apply mb-3 overflow-x-auto rounded-lg bg-muted p-4;
+}
+.prose-gospel pre code {
+  @apply bg-transparent p-0;
+}
+.prose-gospel blockquote {
+  @apply border-l-2 border-muted-foreground pl-4 italic text-muted-foreground;
+}
+.prose-gospel h1,
+.prose-gospel h2,
+.prose-gospel h3 {
+  @apply mb-2 mt-4 font-semibold;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-muted-foreground/30;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}

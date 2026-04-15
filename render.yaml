@@ -1,0 +1,40 @@
+# Render deployment config
+# Free tier: web services spin down after 15 min idle.
+# Set up env vars in the Render dashboard: ANTHROPIC_API_KEY, VOYAGE_API_KEY, DATABASE_URL
+
+services:
+  - type: web
+    name: gospel-rag-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: ANTHROPIC_API_KEY
+        sync: false   # set in dashboard
+      - key: VOYAGE_API_KEY
+        sync: false   # set in dashboard
+      - key: DATABASE_URL
+        sync: false   # Neon connection string — set in dashboard
+      - key: ALLOWED_ORIGINS
+        sync: false   # your Vercel frontend URL
+      - key: SECRET_KEY
+        generateValue: true
+
+  - type: web
+    name: gospel-rag-web
+    runtime: docker
+    dockerfilePath: ./web/Dockerfile
+    rootDir: ./web
+    plan: free
+    envVars:
+      - key: BACKEND_INTERNAL_URL
+        fromService:
+          name: gospel-rag-api
+          type: web
+          property: host
+          prefix: "https://"
+      - key: NEXT_PUBLIC_APP_NAME
+        value: "Gospel RAG"

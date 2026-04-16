@@ -58,8 +58,12 @@ async function proxy(req: NextRequest, params: { path: string[] }): Promise<Resp
     }
   });
 
-  // Streaming response — pass body directly
-  return new Response(backendRes.body, {
+  // SSE streams must be passed through directly; everything else is buffered
+  // to prevent truncation from Next.js compression middleware.
+  const isSSE = (backendRes.headers.get("content-type") ?? "").includes("text/event-stream");
+  const body = isSSE ? backendRes.body : await backendRes.arrayBuffer();
+
+  return new Response(body, {
     status: backendRes.status,
     statusText: backendRes.statusText,
     headers: resHeaders,

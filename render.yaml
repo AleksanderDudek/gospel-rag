@@ -31,9 +31,6 @@ services:
     plan: free
     envVars:
       - key: BACKEND_INTERNAL_URL
-        fromService:
-          name: gospel-rag-api
-          type: web
-          property: url
+        sync: false   # set to https://gospel-rag-api.onrender.com in dashboard
       - key: NEXT_PUBLIC_APP_NAME
         value: "Gospel RAG"

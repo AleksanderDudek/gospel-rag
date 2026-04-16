@@ -109,6 +109,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set lowercase image prefix
+        id: repo
+        run: echo "prefix=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -125,8 +129,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/api:latest
-            ghcr.io/${{ github.repository }}/api:${{ github.sha }}
+            ${{ steps.repo.outputs.prefix }}/api:latest
+            ${{ steps.repo.outputs.prefix }}/api:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -136,7 +140,7 @@ jobs:
           context: ./web
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/web:latest
-            ghcr.io/${{ github.repository }}/web:${{ github.sha }}
+            ${{ steps.repo.outputs.prefix }}/web:latest
+            ${{ steps.repo.outputs.prefix }}/web:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

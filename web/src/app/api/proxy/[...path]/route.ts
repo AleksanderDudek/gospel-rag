@@ -20,6 +20,10 @@ const HOP_BY_HOP = new Set([
   "proxy-authorization",
   "proxy-authenticate",
   "host",
+  // Prevent backend from gzip-encoding — the proxy stream can't reliably
+  // re-encode, so strip accept-encoding and content-encoding end-to-end.
+  "accept-encoding",
+  "content-encoding",
 ]);
 
 async function proxy(req: NextRequest, params: { path: string[] }): Promise<Response> {

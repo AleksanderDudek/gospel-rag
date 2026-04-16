@@ -7,7 +7,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.config import get_settings
-from app.db.database import Base
+from app.db.database import Base, _prepare_url
 # Import all models so Alembic sees them
 from app.db import models  # noqa: F401
 
@@ -20,7 +20,8 @@ target_metadata = Base.metadata
 
 # Override sqlalchemy.url from settings (respects .env file)
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+_clean_url, _connect_args = _prepare_url(settings.database_url)
+config.set_main_option("sqlalchemy.url", _clean_url)
 
 
 def run_migrations_offline() -> None:
@@ -43,11 +44,12 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = settings.database_url
+    configuration["sqlalchemy.url"] = _clean_url
     connectable = async_engine_from_config(
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=_connect_args,
     )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)

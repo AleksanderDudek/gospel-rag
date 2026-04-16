@@ -16,10 +16,11 @@ from pathlib import Path
 
 import httpx
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.config import get_settings  # noqa: E402
+from app.db.database import _prepare_url  # noqa: E402
 from app.rag.embeddings import embed_texts  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -89,66 +90,73 @@ async def _download(client: httpx.AsyncClient, filename: str) -> list | None:
 
 
 async def _load_into_db(
-    session: AsyncSession,
+    factory: async_sessionmaker,
     abbr: str,
     name: str,
     verses: list[dict],
 ) -> None:
-    """Embed verses and insert them into the database."""
-    # Upsert translation row
-    await session.execute(text("""
-        INSERT INTO translations (id, name, language, license)
-        VALUES (:id, :name, 'en', 'Public Domain')
-        ON CONFLICT (id) DO NOTHING
-    """), {"id": abbr, "name": name})
-    await session.commit()
+    """Embed verses and insert them into the database.
 
-    # Skip if already loaded
-    existing = (await session.execute(
-        text("SELECT COUNT(*) FROM verses WHERE translation_id = :tid"),
-        {"tid": abbr},
-    )).scalar_one()
+    Opens two short-lived sessions — one to check/register the translation,
+    one to insert — with embedding happening between them so the connection
+    is never held idle during the long Voyage API calls.
+    """
+    # ── Session 1: upsert translation + check if already loaded ──────────────
+    async with factory() as session:
+        await session.execute(text("""
+            INSERT INTO translations (id, name, language, license)
+            VALUES (:id, :name, 'en', 'Public Domain')
+            ON CONFLICT (id) DO NOTHING
+        """), {"id": abbr, "name": name})
+        await session.commit()
+
+        existing = (await session.execute(
+            text("SELECT COUNT(*) FROM verses WHERE translation_id = :tid"),
+            {"tid": abbr},
+        )).scalar_one()
+
     if existing >= len(verses):
         log.info("  %s already loaded (%d verses), skipping.", abbr, existing)
         return
 
-    # Embed all verses (embed_texts handles internal batching + rate-limit delay)
+    # ── Embed (no DB connection held) ─────────────────────────────────────────
     log.info("  embedding %d verses…", len(verses))
-    texts_list = [v["text"] for v in verses]
-    all_embeddings = await embed_texts(texts_list)
+    all_embeddings = await embed_texts([v["text"] for v in verses])
 
-    # Insert in batches
+    # ── Session 2: insert in batches ──────────────────────────────────────────
     log.info("  inserting into DB…")
-    for i in range(0, len(verses), _INSERT_BATCH):
-        bv = verses[i : i + _INSERT_BATCH]
-        be = all_embeddings[i : i + _INSERT_BATCH]
-        rows = [
-            {
-                "tid":       abbr,
-                "book":      v["book"],
-                "chapter":   v["chapter"],
-                "verse":     v["verse"],
-                "text":      v["text"],
-                "embedding": "[" + ",".join(str(x) for x in e) + "]",
-            }
-            for v, e in zip(bv, be, strict=True)
-        ]
-        await session.execute(
-            text("""
-                INSERT INTO verses (translation_id, book, chapter, verse, text, embedding)
-                VALUES (:tid, :book, :chapter, :verse, :text, CAST(:embedding AS vector))
-                ON CONFLICT DO NOTHING
-            """),
-            rows,
-        )
-        await session.commit()
+    async with factory() as session:
+        for i in range(0, len(verses), _INSERT_BATCH):
+            bv = verses[i : i + _INSERT_BATCH]
+            be = all_embeddings[i : i + _INSERT_BATCH]
+            rows = [
+                {
+                    "tid":       abbr,
+                    "book":      v["book"],
+                    "chapter":   v["chapter"],
+                    "verse":     v["verse"],
+                    "text":      v["text"],
+                    "embedding": "[" + ",".join(str(x) for x in e) + "]",
+                }
+                for v, e in zip(bv, be, strict=True)
+            ]
+            await session.execute(
+                text("""
+                    INSERT INTO verses (translation_id, book, chapter, verse, text, embedding)
+                    VALUES (:tid, :book, :chapter, :verse, :text, CAST(:embedding AS vector))
+                    ON CONFLICT DO NOTHING
+                """),
+                rows,
+            )
+            await session.commit()
 
     log.info("  ✓ %s — %d verses loaded", abbr, len(verses))
 
 
 async def main() -> None:
     settings = get_settings()
-    engine   = create_async_engine(settings.database_url, echo=False)
+    db_url, connect_args = _prepare_url(settings.database_url)
+    engine   = create_async_engine(db_url, echo=False, connect_args=connect_args, pool_pre_ping=True)
     factory  = async_sessionmaker(engine, expire_on_commit=False)
 
     loaded = 0
@@ -164,8 +172,7 @@ async def main() -> None:
                 log.error("  Parsed 0 verses — check file format.")
                 continue
 
-            async with factory() as session:
-                await _load_into_db(session, abbr, name, verses)
+            await _load_into_db(factory, abbr, name, verses)
             loaded += 1
 
     await engine.dispose()

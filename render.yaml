@@ -26,7 +26,7 @@ services:
   - type: web
     name: gospel-rag-web
     runtime: docker
-    dockerfilePath: ./web/Dockerfile
+    dockerfilePath: ./Dockerfile
     rootDir: ./web
     plan: free
     envVars:
@@ -34,7 +34,6 @@ services:
         fromService:
           name: gospel-rag-api
           type: web
-          property: host
-          prefix: "https://"
+          property: url
       - key: NEXT_PUBLIC_APP_NAME
         value: "Gospel RAG"

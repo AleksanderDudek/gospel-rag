@@ -4,55 +4,58 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createConversation, listConversations } from "@/lib/api";
 
-/**
- * /new — smart landing page:
- *   1. Fetch existing conversations.
- *   2. If any exist → redirect to the most recent one.
- *   3. If none → create a new one and redirect.
- * Retries with backoff to handle Render free-tier cold starts (~30–60 s).
- */
+type State = "loading" | "error";
+
 export default function NewConversationPage() {
   const router = useRouter();
-  const [hint, setHint] = useState(false);
+  const [state, setState] = useState<State>("loading");
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    let cancelled = false;
-    const hintTimer = setTimeout(() => setHint(true), 8000);
+    setState("loading");
+    setErrorMsg("");
 
-    async function run(backoff: number): Promise<void> {
-      if (cancelled) return;
-      try {
-        const convs = await listConversations();
-        if (cancelled) return;
+    listConversations()
+      .then((convs) => {
         if (convs.length > 0) {
           router.replace(`/c/${convs[0].id}`);
         } else {
-          const conv = await createConversation();
-          if (!cancelled) router.replace(`/c/${conv.id}`);
+          return createConversation().then((conv) => {
+            router.replace(`/c/${conv.id}`);
+          });
         }
-      } catch {
-        if (!cancelled) {
-          setTimeout(() => run(Math.min(backoff * 1.5, 10_000)), backoff);
-        }
-      }
-    }
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        setErrorMsg(msg);
+        setState("error");
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    void run(2000);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(hintTimer);
-    };
-  }, [router]);
+  if (state === "error") {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4">
+        <p className="text-sm text-destructive">Failed to connect to server.</p>
+        <p className="max-w-xs text-center text-xs text-muted-foreground">
+          {errorMsg}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          The server may be starting up — wait a moment then try again.
+        </p>
+        <button
+          onClick={() => setState("loading")}
+          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-3">
+    <div className="flex h-full items-center justify-center">
       <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      {hint && (
-        <p className="text-xs text-muted-foreground">
-          Waking up the server&hellip; this takes ~30s on the free tier
-        </p>
-      )}
     </div>
   );
 }

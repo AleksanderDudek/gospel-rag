@@ -79,3 +79,6 @@ export const PUT = (req: NextRequest, { params }: { params: Promise<{ path: stri
 
 // Disable Next.js body parsing for streaming
 export const dynamic = "force-dynamic";
+// Allow up to 60 s for Render free-tier cold starts (requires Vercel Pro+;
+// on Hobby the cap is 10 s — the UI shows an error and lets the user retry).
+export const maxDuration = 60;

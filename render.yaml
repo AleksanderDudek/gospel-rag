@@ -25,12 +25,17 @@ services:
 
   - type: web
     name: gospel-rag-web
-    runtime: docker
-    dockerContext: ./web
-    dockerfilePath: ./Dockerfile
+    runtime: node
+    rootDir: ./web
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    startCommand: node .next/standalone/server.js
     plan: free
     envVars:
       - key: BACKEND_INTERNAL_URL
         sync: false   # set to https://gospel-rag-api.onrender.com in dashboard
       - key: NEXT_PUBLIC_APP_NAME
         value: "Gospel RAG"
+      - key: NODE_ENV
+        value: production
+      - key: HOSTNAME
+        value: "0.0.0.0"

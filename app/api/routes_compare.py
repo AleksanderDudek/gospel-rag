@@ -14,16 +14,12 @@ from app.db.models import GOSPEL_BOOKS
 
 router = APIRouter(prefix="/compare", tags=["compare"])
 
-_REF_RE = re.compile(
-    r"^(?P<book>[A-Z]{3})\s+(?P<chapter>\d+):(?P<vs>\d+)(?:-(?P<ve>\d+))?$"
-)
+_REF_RE = re.compile(r"^(?P<book>[A-Z]{3})\s+(?P<chapter>\d+):(?P<vs>\d+)(?:-(?P<ve>\d+))?$")
 
 
 class CompareRequest(BaseModel):
     reference: str = Field(..., description="e.g. 'MAT 5:3-12' or 'JHN 3:16'")
-    translation_ids: list[str] = Field(
-        ..., min_length=2, description="e.g. ['KJV', 'WEB', 'YLT']"
-    )
+    translation_ids: list[str] = Field(..., min_length=2, description="e.g. ['KJV', 'WEB', 'YLT']")
 
 
 class VerseData(BaseModel):
@@ -74,13 +70,16 @@ async def compare(
           AND translation_id = ANY(:translation_ids)
         ORDER BY translation_id, verse
     """)
-    result = await db.execute(sql, {
-        "book": book,
-        "chapter": chapter,
-        "verse_start": verse_start,
-        "verse_end": verse_end,
-        "translation_ids": translation_ids_upper,
-    })
+    result = await db.execute(
+        sql,
+        {
+            "book": book,
+            "chapter": chapter,
+            "verse_start": verse_start,
+            "verse_end": verse_end,
+            "translation_ids": translation_ids_upper,
+        },
+    )
     rows = result.fetchall()
 
     # Group by translation
@@ -92,8 +91,7 @@ async def compare(
 
     # Maintain requested order
     translations = [
-        TranslationData(id=tid, verses=by_translation.get(tid, []))
-        for tid in translation_ids_upper
+        TranslationData(id=tid, verses=by_translation.get(tid, [])) for tid in translation_ids_upper
     ]
 
     return CompareResponse(

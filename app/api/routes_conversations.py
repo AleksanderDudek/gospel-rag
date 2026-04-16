@@ -3,10 +3,9 @@
 All routes require the session cookie (anonymous auth).
 """
 
-import asyncio
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
@@ -19,10 +18,10 @@ from sqlalchemy.orm import selectinload
 from app.api.routes_compare import CompareRequest, compare
 from app.api.routes_passage import PassageRequest, passage
 from app.auth.session import get_session_id
+from app.config import get_settings as _get_settings
 from app.db.database import get_db
 from app.db.models import Conversation, Message
-from app.config import get_settings as _get_settings
-from app.rag.generation import generate_title, stream_rag_response, _estimate_cost
+from app.rag.generation import _estimate_cost, generate_title, stream_rag_response
 from app.rag.retrieval import hybrid_search
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
@@ -33,9 +32,7 @@ _DATE_TITLE_RE = re.compile(r"^\d{8} \d{2}:\d{2}$")  # matches DDMMYYYY HH:MM de
 _COMPARE_RE = re.compile(
     r"^/compare\s+([A-Z]{3}\s+\d+:\d+(?:-\d+)?)\s+((?:[A-Z]+\s*)+)$", re.IGNORECASE
 )
-_PASSAGE_RE = re.compile(
-    r"^/passage\s+([A-Z]{3}\s+\d+:\d+(?:-\d+)?)(.*)$", re.IGNORECASE
-)
+_PASSAGE_RE = re.compile(r"^/passage\s+([A-Z]{3}\s+\d+:\d+(?:-\d+)?)(.*)$", re.IGNORECASE)
 
 
 def _detect_slash(content: str) -> tuple[str, dict] | None:
@@ -62,6 +59,7 @@ def _detect_slash(content: str) -> tuple[str, dict] | None:
 
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
+
 
 class ConversationOut(BaseModel):
     id: UUID
@@ -101,6 +99,7 @@ class RenameRequest(BaseModel):
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _conv_out(conv: Conversation) -> dict:
     return {
@@ -145,6 +144,7 @@ async def _assert_owned(
 
 # ── Routes ───────────────────────────────────────────────────────────────────
 
+
 @router.post("", status_code=201)
 async def create_conversation(
     response: Response,
@@ -152,7 +152,7 @@ async def create_conversation(
     db: AsyncSession = Depends(get_db),
     session_id: UUID = Depends(get_session_id),
 ) -> dict:
-    title = datetime.now(timezone.utc).strftime("%d%m%Y %H:%M")
+    title = datetime.now(UTC).strftime("%d%m%Y %H:%M")
     conv = Conversation(session_id=session_id, title=title)
     db.add(conv)
     await db.commit()
@@ -264,9 +264,7 @@ async def send_message(
     await db.commit()
 
     # Auto-title after first user message (background task)
-    msg_count_result = await db.execute(
-        select(Message).where(Message.conversation_id == conv_id)
-    )
+    msg_count_result = await db.execute(select(Message).where(Message.conversation_id == conv_id))
     if len(msg_count_result.scalars().all()) <= 1 and _DATE_TITLE_RE.match(conv.title):
         background_tasks.add_task(_auto_title, conv_id, user_content)
 
@@ -332,13 +330,14 @@ async def send_message(
         )
         # New DB session for background persist (current session may be closed)
         from app.db.database import AsyncSessionLocal
+
         async with AsyncSessionLocal() as persist_db:
             persist_db.add(asst_msg)
             # Touch conversation.updated_at
             await persist_db.execute(
                 update(Conversation)
                 .where(Conversation.id == conv_id)
-                .values(updated_at=datetime.now(timezone.utc))
+                .values(updated_at=datetime.now(UTC))
             )
             await persist_db.commit()
 
@@ -417,11 +416,10 @@ async def _auto_title(conv_id: UUID, first_message: str) -> None:
     try:
         title = await generate_title(first_message)
         from app.db.database import AsyncSessionLocal
+
         async with AsyncSessionLocal() as db:
             await db.execute(
-                update(Conversation)
-                .where(Conversation.id == conv_id)
-                .values(title=title)
+                update(Conversation).where(Conversation.id == conv_id).values(title=title)
             )
             await db.commit()
     except Exception:

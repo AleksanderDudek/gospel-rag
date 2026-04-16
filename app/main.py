@@ -22,7 +22,11 @@ def _setup_otel(app: FastAPI, settings) -> bool:
     from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export import (
+        BatchSpanProcessor,
+        ConsoleSpanExporter,
+        SimpleSpanProcessor,
+    )
 
     # Parse "Key=Value,Key2=Value2" — URL-decode so Grafana Cloud %20 tokens work
     headers: dict[str, str] = {}
@@ -74,6 +78,7 @@ async def lifespan(app: FastAPI):
 
     if otel_active:
         from opentelemetry import trace
+
         tp = trace.get_tracer_provider()
         if hasattr(tp, "force_flush"):
             tp.force_flush(timeout_millis=5000)

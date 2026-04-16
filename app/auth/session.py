@@ -24,7 +24,7 @@ async def get_session_id(request: Request, response: Response) -> UUID:
         value=str(new_id),
         httponly=True,
         samesite="lax",
-        secure=False,   # set to True in production behind HTTPS
+        secure=False,  # set to True in production behind HTTPS
         max_age=SESSION_MAX_AGE,
         path="/",
     )

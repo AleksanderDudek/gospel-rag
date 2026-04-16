@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Menu, Pencil } from "lucide-react";
+import { Menu } from "lucide-react";
 import { getConversation } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/sidebar/Sidebar";

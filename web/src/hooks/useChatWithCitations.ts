@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useChat, type Message } from "@ai-sdk/react";
 import type { Citation, ComparePayload, PassagePayload } from "@/types/api";
-import type { ActiveCitation, ChatMessage } from "@/types/chat";
+import type { ChatMessage } from "@/types/chat";
 import type { MessageRecord } from "@/types/api";
 
 interface UseChatWithCitationsOptions {

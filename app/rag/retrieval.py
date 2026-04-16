@@ -33,7 +33,7 @@ class RetrievedVerse:
         return f"[{self.book} {self.chapter}:{self.verse}, {self.translation_id}]"
 
     def to_context_line(self) -> str:
-        return f"{self.citation_key} \"{self.verse_text}\""
+        return f'{self.citation_key} "{self.verse_text}"'
 
 
 async def hybrid_search(
@@ -157,13 +157,16 @@ async def fetch_passage(
           AND translation_id = :translation_id
         ORDER BY verse
     """)
-    result = await db.execute(sql, {
-        "book": book,
-        "chapter": chapter,
-        "verse_start": verse_start,
-        "verse_end": verse_end,
-        "translation_id": translation_id,
-    })
+    result = await db.execute(
+        sql,
+        {
+            "book": book,
+            "chapter": chapter,
+            "verse_start": verse_start,
+            "verse_end": verse_end,
+            "translation_id": translation_id,
+        },
+    )
     return [
         RetrievedVerse(
             id=row.id,

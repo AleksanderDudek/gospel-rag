@@ -14,9 +14,7 @@ import anthropic
 from app.config import get_settings
 from app.rag.retrieval import RetrievedVerse
 
-_CITATION_RE = re.compile(
-    r"\[([A-Z]{3})\s+(\d+):(\d+(?:-\d+)?),\s*([A-Z]+)\]"
-)
+_CITATION_RE = re.compile(r"\[([A-Z]{3})\s+(\d+):(\d+(?:-\d+)?),\s*([A-Z]+)\]")
 
 _SYSTEM_PROMPT = """\
 You are a knowledgeable biblical scholar specializing in the four Gospels \
@@ -82,19 +80,22 @@ def _parse_citations(
         verse = verse_map.get(lookup_key)
         verse_text = verse.verse_text if verse else ""
 
-        citations.append(Citation(
-            book=book,
-            chapter=chapter,
-            verse_start=verse_start,
-            verse_end=verse_end,
-            translation=translation,
-            text=verse_text,
-        ))
+        citations.append(
+            Citation(
+                book=book,
+                chapter=chapter,
+                verse_start=verse_start,
+                verse_end=verse_end,
+                translation=translation,
+                text=verse_text,
+            )
+        )
 
     return citations
 
 
 # ── Vercel AI SDK data stream helpers ────────────────────────────────────────
+
 
 def _text_delta(token: str) -> str:
     return f"0:{json.dumps(token)}\n"
@@ -116,6 +117,7 @@ def _finish_event(finish_reason: str, input_tokens: int, output_tokens: int) -> 
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 async def stream_rag_response(
     query: str,
@@ -162,31 +164,32 @@ async def stream_rag_response(
         output_tokens = final_msg.usage.output_tokens
 
     # Build citation lookup map from retrieved verses
-    verse_map = {
-        f"{v.book}{v.chapter}:{v.verse},{v.translation_id}": v
-        for v in context_verses
-    }
+    verse_map = {f"{v.book}{v.chapter}:{v.verse},{v.translation_id}": v for v in context_verses}
     citations = _parse_citations(full_text, verse_map)
     cost_usd = _estimate_cost(settings.generation_model, input_tokens, output_tokens)
 
     # Send structured data event with citations + cost
-    yield _data_event([{
-        "citations": [
+    yield _data_event(
+        [
             {
-                "book": c.book,
-                "chapter": c.chapter,
-                "verse_start": c.verse_start,
-                "verse_end": c.verse_end,
-                "translation": c.translation,
-                "text": c.text,
+                "citations": [
+                    {
+                        "book": c.book,
+                        "chapter": c.chapter,
+                        "verse_start": c.verse_start,
+                        "verse_end": c.verse_end,
+                        "translation": c.translation,
+                        "text": c.text,
+                    }
+                    for c in citations
+                ],
+                "cost_usd": cost_usd,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "full_text": full_text,
             }
-            for c in citations
-        ],
-        "cost_usd": cost_usd,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "full_text": full_text,
-    }])
+        ]
+    )
 
     yield _finish_event("stop", input_tokens, output_tokens)
 
@@ -199,14 +202,16 @@ async def generate_title(first_message: str) -> str:
     response = await client.messages.create(
         model=settings.titling_model,
         max_tokens=30,
-        messages=[{
-            "role": "user",
-            "content": (
-                f"Generate a concise 4-word title for a conversation that starts with this "
-                f"question: \"{first_message[:200]}\"\n\n"
-                "Respond with ONLY the title, no punctuation, no quotes."
-            ),
-        }],
+        messages=[
+            {
+                "role": "user",
+                "content": (
+                    f"Generate a concise 4-word title for a conversation that starts with this "
+                    f'question: "{first_message[:200]}"\n\n'
+                    "Respond with ONLY the title, no punctuation, no quotes."
+                ),
+            }
+        ],
     )
     title = response.content[0].text.strip()
     # Truncate to reasonable length just in case

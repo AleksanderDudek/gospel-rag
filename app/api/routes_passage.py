@@ -5,7 +5,6 @@ POST /passage — fetch a passage with optional cross-Gospel parallels and synth
 import re
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,9 +16,7 @@ from app.rag.generation import _get_client  # noqa: PLC2701
 
 router = APIRouter(prefix="/passage", tags=["passage"])
 
-_REF_RE = re.compile(
-    r"^(?P<book>[A-Z]{3})\s+(?P<chapter>\d+):(?P<vs>\d+)(?:-(?P<ve>\d+))?$"
-)
+_REF_RE = re.compile(r"^(?P<book>[A-Z]{3})\s+(?P<chapter>\d+):(?P<vs>\d+)(?:-(?P<ve>\d+))?$")
 
 # Known parallel pericopes (subset for demo — extend as needed)
 _PARALLELS: dict[str, list[str]] = {
@@ -94,9 +91,18 @@ async def _fetch_verses(
           AND translation_id = :tid
         ORDER BY verse
     """)
-    rows = (await db.execute(sql, {
-        "book": book, "chapter": chapter, "vs": vs, "ve": ve, "tid": translation_id,
-    })).fetchall()
+    rows = (
+        await db.execute(
+            sql,
+            {
+                "book": book,
+                "chapter": chapter,
+                "vs": vs,
+                "ve": ve,
+                "tid": translation_id,
+            },
+        )
+    ).fetchall()
     return [VerseData(verse=r.verse, text=r.text) for r in rows]
 
 
@@ -118,17 +124,19 @@ async def _synthesize(
     response = await client.messages.create(
         model=settings.generation_model,
         max_tokens=600,
-        messages=[{
-            "role": "user",
-            "content": (
-                f"You are a biblical scholar. Compare and synthesize the following Gospel accounts "
-                f"of {reference}.\n\n"
-                f"Primary passage ({reference}):\n{main_text}\n\n"
-                f"Parallel accounts:\n{parallel_texts}\n\n"
-                "Write a concise scholarly synthesis (3-5 sentences) highlighting similarities, "
-                "differences, and theological themes across the accounts."
-            ),
-        }],
+        messages=[
+            {
+                "role": "user",
+                "content": (
+                    f"You are a biblical scholar. Compare and synthesize the following Gospel accounts "
+                    f"of {reference}.\n\n"
+                    f"Primary passage ({reference}):\n{main_text}\n\n"
+                    f"Parallel accounts:\n{parallel_texts}\n\n"
+                    "Write a concise scholarly synthesis (3-5 sentences) highlighting similarities, "
+                    "differences, and theological themes across the accounts."
+                ),
+            }
+        ],
     )
     return response.content[0].text
 
@@ -150,12 +158,14 @@ async def passage(
         for pref in parallel_refs:
             pb, pc, pvs, pve = _parse_ref(pref)
             pverses = await _fetch_verses(db, pb, pc, pvs, pve, translation_id)
-            parallels.append(ParallelPassage(
-                reference=pref,
-                book_name=GOSPEL_BOOKS.get(pb, pb),
-                translation_id=translation_id,
-                verses=pverses,
-            ))
+            parallels.append(
+                ParallelPassage(
+                    reference=pref,
+                    book_name=GOSPEL_BOOKS.get(pb, pb),
+                    translation_id=translation_id,
+                    verses=pverses,
+                )
+            )
 
     synthesis: str | None = None
     if body.synthesize and parallels:

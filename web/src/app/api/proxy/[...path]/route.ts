@@ -6,7 +6,7 @@
  * - Handles SSE streaming with no buffering.
  */
 
-import { type NextRequest, NextResponse } from "next/server";
+import { type NextRequest } from "next/server";
 
 const BACKEND = process.env.BACKEND_INTERNAL_URL ?? "http://localhost:8000";
 

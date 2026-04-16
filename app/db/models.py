@@ -11,7 +11,8 @@ from sqlalchemy import (
     Text,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID as PGUUID
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.config import get_settings
@@ -49,7 +50,7 @@ class Verse(Base):
     translation_id: Mapped[str] = mapped_column(
         String(10), ForeignKey("translations.id", ondelete="CASCADE"), index=True
     )
-    book: Mapped[str] = mapped_column(String(5))   # MAT, MRK, LUK, JHN
+    book: Mapped[str] = mapped_column(String(5))  # MAT, MRK, LUK, JHN
     chapter: Mapped[int] = mapped_column(Integer)
     verse: Mapped[int] = mapped_column(Integer)
     text: Mapped[str] = mapped_column(Text)
@@ -58,9 +59,7 @@ class Verse(Base):
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)
 
     # Semantic search
-    embedding: Mapped[list[float] | None] = mapped_column(
-        Vector(_dims()), nullable=True
-    )
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(_dims()), nullable=True)
 
     translation_obj: Mapped[Translation] = relationship(back_populates="verses")
 
@@ -82,6 +81,7 @@ class Verse(Base):
 
 # ── Conversation / session ────────────────────────────────────────────────────
 
+
 class Conversation(Base):
     """An anonymous chat session (identified by cookie UUID)."""
 
@@ -90,9 +90,7 @@ class Conversation(Base):
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     session_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
     title: Mapped[str] = mapped_column(String(200), default="New chat")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -103,9 +101,7 @@ class Conversation(Base):
         order_by="Message.created_at",
     )
 
-    __table_args__ = (
-        Index("ix_conversations_session_updated", "session_id", "updated_at"),
-    )
+    __table_args__ = (Index("ix_conversations_session_updated", "session_id", "updated_at"),)
 
 
 class Message(Base):
@@ -136,8 +132,6 @@ class Message(Base):
     input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     conversation: Mapped[Conversation] = relationship(back_populates="messages")

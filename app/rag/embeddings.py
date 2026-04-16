@@ -44,7 +44,9 @@ async def _embed_batch_with_retry(
             wait = _RATE_LIMIT_BACKOFF * (attempt + 1)
             log.warning(
                 "  Rate limit hit — sleeping %.0fs before retry (%d/%d)…",
-                wait, attempt + 1, max_retries,
+                wait,
+                attempt + 1,
+                max_retries,
             )
             await asyncio.sleep(wait)
     raise RuntimeError("unreachable")  # pragma: no cover
@@ -80,14 +82,14 @@ async def embed_query(text: str) -> list[float]:
     settings = get_settings()
     for attempt in range(8):
         try:
-            result = await client.embed(
-                [text], model=settings.embedding_model, input_type="query"
-            )
+            result = await client.embed([text], model=settings.embedding_model, input_type="query")
             return result.embeddings[0]
         except voyageai.error.RateLimitError:
             if attempt == 7:
                 raise
             wait = _RATE_LIMIT_BACKOFF * (attempt + 1)
-            log.warning("embed_query rate limit — sleeping %.0fs (attempt %d/8)…", wait, attempt + 1)
+            log.warning(
+                "embed_query rate limit — sleeping %.0fs (attempt %d/8)…", wait, attempt + 1
+            )
             await asyncio.sleep(wait)
     raise RuntimeError("unreachable")  # pragma: no cover

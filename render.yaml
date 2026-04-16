@@ -19,8 +19,21 @@ services:
       - key: DATABASE_URL
         sync: false   # Neon connection string — set in dashboard
       - key: ALLOWED_ORIGINS
-        sync: false   # your Vercel frontend URL
+        sync: false   # https://gospel-rag-web.onrender.com (update after web service is live)
       - key: SECRET_KEY
         generateValue: true
 
-  # Frontend deployed on Vercel — set BACKEND_INTERNAL_URL=https://gospel-rag-api.onrender.com there
+  - type: web
+    name: gospel-rag-web
+    runtime: node
+    rootDir: ./web
+    buildCommand: npm install -g pnpm && pnpm install --frozen-lockfile && pnpm build
+    startCommand: node_modules/.bin/next start
+    plan: free
+    envVars:
+      - key: BACKEND_INTERNAL_URL
+        sync: false   # set to https://gospel-rag-api.onrender.com in dashboard
+      - key: NEXT_PUBLIC_APP_NAME
+        value: "Gospel RAG"
+      - key: NODE_ENV
+        value: production

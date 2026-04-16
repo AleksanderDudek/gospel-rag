@@ -1,9 +1,11 @@
 """Integration tests for the /conversations/* endpoints."""
 
+import re
 import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.mark.asyncio
@@ -15,7 +17,7 @@ async def test_create_conversation(client: AsyncClient, session_cookie: str):
     assert resp.status_code == 201
     data = resp.json()
     assert "id" in data
-    assert data["title"] == "New chat"
+    assert re.match(r"^\d{8} \d{2}:\d{2}$", data["title"]), f"unexpected title: {data['title']!r}"
     return data["id"]
 
 
@@ -113,34 +115,32 @@ async def test_cross_session_access_is_forbidden(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_cascade_delete_removes_messages(client: AsyncClient, session_cookie: str):
+async def test_cascade_delete_removes_messages(
+    client: AsyncClient, db: AsyncSession, session_cookie: str
+):
     """Deleting a conversation cascades to its messages."""
+    from sqlalchemy import text
+
+    from app.db.models import Message
+
     create_resp = await client.post(
         "/conversations",
         cookies={"gospel_rag_session": session_cookie},
     )
     conv_id = create_resp.json()["id"]
 
-    # Manually insert a message via the DB to verify cascade
+    # Manually insert a message via the test DB session to verify cascade
     # (avoiding a real Claude API call in tests)
-    import uuid as _uuid
-
-    from sqlalchemy import text
-
-    from app.db.database import AsyncSessionLocal
-    from app.db.models import Message
-
-    async with AsyncSessionLocal() as db:
-        msg = Message(
-            id=_uuid.uuid4(),
-            conversation_id=_uuid.UUID(conv_id),
-            role="user",
-            content="test",
-            kind="text",
-        )
-        db.add(msg)
-        await db.commit()
-        msg_id = str(msg.id)
+    msg = Message(
+        id=uuid.uuid4(),
+        conversation_id=uuid.UUID(conv_id),
+        role="user",
+        content="test",
+        kind="text",
+    )
+    db.add(msg)
+    await db.commit()
+    msg_id = str(msg.id)
 
     # Delete the conversation
     await client.delete(
@@ -149,12 +149,11 @@ async def test_cascade_delete_removes_messages(client: AsyncClient, session_cook
     )
 
     # Confirm message is gone
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            text("SELECT id FROM messages WHERE id = :id"),
-            {"id": _uuid.UUID(msg_id)},
-        )
-        assert result.scalar_one_or_none() is None
+    result = await db.execute(
+        text("SELECT id FROM messages WHERE id = :id"),
+        {"id": uuid.UUID(msg_id)},
+    )
+    assert result.scalar_one_or_none() is None
 
 
 @pytest.mark.asyncio

@@ -63,3 +63,7 @@ data/embeddings_cache.pkl
 # Misc
 *.tmp
 .turbo/
+web/tsconfig.tsbuildinfo
+
+# Claude Code
+.claude/

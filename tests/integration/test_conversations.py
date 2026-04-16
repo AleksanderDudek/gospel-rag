@@ -123,10 +123,12 @@ async def test_cascade_delete_removes_messages(client: AsyncClient, session_cook
 
     # Manually insert a message via the DB to verify cascade
     # (avoiding a real Claude API call in tests)
+    import uuid as _uuid
+
     from sqlalchemy import text
+
     from app.db.database import AsyncSessionLocal
     from app.db.models import Message
-    import uuid as _uuid
 
     async with AsyncSessionLocal() as db:
         msg = Message(

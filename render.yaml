@@ -27,8 +27,8 @@ services:
     name: gospel-rag-web
     runtime: node
     rootDir: ./web
-    buildCommand: npm install -g pnpm && pnpm install --frozen-lockfile && pnpm build
-    startCommand: node_modules/.bin/next start -p $PORT
+    buildCommand: npm install -g pnpm && pnpm install --frozen-lockfile && pnpm build && cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public
+    startCommand: node .next/standalone/server.js
     plan: free
     envVars:
       - key: BACKEND_INTERNAL_URL

@@ -59,6 +59,7 @@ terraform/secrets.auto.tfvars
 # Data / indexes
 data/raw/
 data/embeddings_cache.pkl
+data/progress.json
 
 # Misc
 *.tmp

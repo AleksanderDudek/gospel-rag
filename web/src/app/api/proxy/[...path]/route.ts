@@ -24,6 +24,10 @@ const HOP_BY_HOP = new Set([
   // re-encode, so strip accept-encoding and content-encoding end-to-end.
   "accept-encoding",
   "content-encoding",
+  // content-length from backend reflects compressed size; after undici
+  // transparently decompresses the body, the length no longer matches.
+  // Drop it so the Response sets the correct length from the actual body.
+  "content-length",
 ]);
 
 async function proxy(req: NextRequest, params: { path: string[] }): Promise<Response> {

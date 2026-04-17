@@ -62,10 +62,13 @@ async function proxy(req: NextRequest, params: { path: string[] }): Promise<Resp
     }
   });
 
-  // SSE streams must be passed through directly; everything else is buffered
-  // to prevent truncation from Next.js compression middleware.
+  // Streaming responses must be passed through directly (no buffering).
+  // Detect both SSE (text/event-stream) and Vercel AI SDK data streams
+  // (text/plain with x-vercel-ai-data-stream header). Everything else is
+  // buffered to prevent truncation from content-length mismatches.
   const isSSE = (backendRes.headers.get("content-type") ?? "").includes("text/event-stream");
-  const body = isSSE ? backendRes.body : await backendRes.arrayBuffer();
+  const isAIStream = backendRes.headers.has("x-vercel-ai-data-stream");
+  const body = isSSE || isAIStream ? backendRes.body : await backendRes.arrayBuffer();
 
   return new Response(body, {
     status: backendRes.status,

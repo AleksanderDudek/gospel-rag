@@ -28,7 +28,7 @@ services:
     runtime: node
     rootDir: ./web
     buildCommand: npm install -g pnpm && pnpm install --frozen-lockfile && pnpm build
-    startCommand: node_modules/.bin/next start
+    startCommand: node_modules/.bin/next start -p $PORT
     plan: free
     envVars:
       - key: BACKEND_INTERNAL_URL

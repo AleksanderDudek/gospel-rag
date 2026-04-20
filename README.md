@@ -6,7 +6,7 @@
 
 ---
 
-![Gospel RAG Chat](https://raw.githubusercontent.com/AleksanderDudek/gospel-rag/main/docs/screenshot.png)
+![Gospel RAG Chat](https://raw.githubusercontent.com/AleksanderDudek/gospel-rag/main/docs/gospel-rag.png)
 
 ---
 

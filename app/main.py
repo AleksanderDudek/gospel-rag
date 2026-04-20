@@ -7,7 +7,13 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import routes_compare, routes_conversations, routes_passage, routes_query
+from app.api import (
+    routes_compare,
+    routes_conversations,
+    routes_passage,
+    routes_query,
+    routes_verses,
+)
 from app.config import get_settings
 from app.db.database import engine
 
@@ -112,6 +118,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_compare.router)
     app.include_router(routes_passage.router)
     app.include_router(routes_conversations.router)
+    app.include_router(routes_verses.router)
 
     @app.get("/health")
     async def health():

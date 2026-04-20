@@ -35,7 +35,21 @@ export function useChatWithCitations({
   initialDbMessages,
   onMessagesChange,
 }: UseChatWithCitationsOptions) {
-  const metaRef = useRef<Map<string, MessageMeta>>(new Map());
+  const metaRef = useRef<Map<string, MessageMeta>>(
+    new Map(
+      initialDbMessages.map((m) => [
+        m.id,
+        {
+          citations: m.citations_json ?? undefined,
+          cost_usd: m.cost_usd ?? undefined,
+          input_tokens: m.input_tokens ?? undefined,
+          output_tokens: m.output_tokens ?? undefined,
+          kind: (m.kind as MessageMeta["kind"]) ?? "text",
+          payload: (m.payload_json as ComparePayload | PassagePayload | undefined) ?? undefined,
+        },
+      ])
+    )
+  );
   const [lastCitations, setLastCitations] = useState<Citation[]>([]);
 
   const {

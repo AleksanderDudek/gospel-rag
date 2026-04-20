@@ -56,6 +56,7 @@ async def query(
             query=body.query,
             context_verses=context_verses,
             conversation_history=body.conversation_history,
+            db=db,
         ),
         media_type="text/plain; charset=utf-8",
         headers={

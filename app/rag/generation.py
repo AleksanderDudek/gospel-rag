@@ -10,9 +10,10 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 import anthropic
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.rag.retrieval import RetrievedVerse
+from app.rag.retrieval import RetrievedVerse, fetch_verse_texts
 
 _CITATION_RE = re.compile(r"\[([A-Z]{3})\s+(\d+):(\d+(?:-\d+)?),\s*([A-Z]+)\]")
 
@@ -123,6 +124,7 @@ async def stream_rag_response(
     query: str,
     context_verses: list[RetrievedVerse],
     conversation_history: list[dict] | None = None,
+    db: AsyncSession | None = None,
 ) -> AsyncGenerator[str, None]:
     """
     Stream a RAG response as Vercel AI SDK data stream lines.
@@ -166,6 +168,20 @@ async def stream_rag_response(
     # Build citation lookup map from retrieved verses
     verse_map = {f"{v.book}{v.chapter}:{v.verse},{v.translation_id}": v for v in context_verses}
     citations = _parse_citations(full_text, verse_map)
+
+    # Fill in text for any citations Claude made outside the retrieved top-k
+    if db is not None:
+        missing_refs = [
+            (c.book, c.chapter, c.verse_start, c.translation)
+            for c in citations
+            if not c.text
+        ]
+        if missing_refs:
+            fetched = await fetch_verse_texts(db, missing_refs)
+            for c in citations:
+                if not c.text:
+                    c.text = fetched.get(f"{c.book}{c.chapter}:{c.verse_start},{c.translation}", "")
+
     cost_usd = _estimate_cost(settings.generation_model, input_tokens, output_tokens)
 
     # Send structured data event with citations + cost

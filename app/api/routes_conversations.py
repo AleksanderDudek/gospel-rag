@@ -297,7 +297,7 @@ async def send_message(
         output_tokens = 0
         citations_data = []
 
-        async for line in stream_rag_response(user_content, context_verses, history):
+        async for line in stream_rag_response(user_content, context_verses, history, db=db):
             if line.startswith("2:"):
                 # Parse the data event to extract citations + tokens
                 try:

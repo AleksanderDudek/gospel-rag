@@ -139,6 +139,39 @@ async def hybrid_search(
     ]
 
 
+async def fetch_verse_texts(
+    db: AsyncSession,
+    refs: list[tuple[str, int, int, str]],
+) -> dict[str, str]:
+    """Fetch verse texts for (book, chapter, verse, translation_id) tuples.
+
+    Returns a dict keyed as "{book}{chapter}:{verse},{translation_id}".
+    Only returns rows that exist; missing refs are absent from the result.
+    """
+    if not refs:
+        return {}
+
+    clauses = " OR ".join(
+        f"(book = :book{i} AND chapter = :ch{i} AND verse = :v{i} AND translation_id = :t{i})"
+        for i in range(len(refs))
+    )
+    params: dict = {}
+    for i, (book, chapter, verse, translation_id) in enumerate(refs):
+        params[f"book{i}"] = book
+        params[f"ch{i}"] = chapter
+        params[f"v{i}"] = verse
+        params[f"t{i}"] = translation_id
+
+    result = await db.execute(
+        text(f"SELECT book, chapter, verse, translation_id, text FROM verses WHERE {clauses}"),
+        params,
+    )
+    return {
+        f"{row.book}{row.chapter}:{row.verse},{row.translation_id}": row.text
+        for row in result.fetchall()
+    }
+
+
 async def fetch_passage(
     db: AsyncSession,
     book: str,

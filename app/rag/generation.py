@@ -172,9 +172,7 @@ async def stream_rag_response(
     # Fill in text for any citations Claude made outside the retrieved top-k
     if db is not None:
         missing_refs = [
-            (c.book, c.chapter, c.verse_start, c.translation)
-            for c in citations
-            if not c.text
+            (c.book, c.chapter, c.verse_start, c.translation) for c in citations if not c.text
         ]
         if missing_refs:
             fetched = await fetch_verse_texts(db, missing_refs)

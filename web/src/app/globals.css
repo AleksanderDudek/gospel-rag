@@ -91,6 +91,20 @@
   @apply mb-2 mt-4 font-semibold;
 }
 
+/* Heartbeat cross loader */
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1);    opacity: 0.9; }
+  14%       { transform: scale(1.3); opacity: 1;   }
+  28%       { transform: scale(1);   opacity: 0.85;}
+  42%       { transform: scale(1.18);opacity: 1;   }
+  70%       { transform: scale(1);   opacity: 0.8; }
+}
+
+.animate-heartbeat {
+  animation: heartbeat 1.6s ease-in-out infinite;
+  transform-origin: center;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

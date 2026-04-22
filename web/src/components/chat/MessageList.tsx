@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MessageBubble } from "./MessageBubble";
+import { ThinkingBubble } from "./ThinkingBubble";
 import { EmptyState } from "./EmptyState";
 import type { ActiveCitation, ChatMessage } from "@/types/chat";
 
@@ -11,9 +12,10 @@ interface MessageListProps {
   messages: ChatMessage[];
   onCitationClick: (c: ActiveCitation) => void;
   onSuggest: (text: string) => void;
+  isAwaiting?: boolean;
 }
 
-export function MessageList({ messages, onCitationClick, onSuggest }: MessageListProps) {
+export function MessageList({ messages, onCitationClick, onSuggest, isAwaiting }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [following, setFollowing] = useState(true);
@@ -51,6 +53,7 @@ export function MessageList({ messages, onCitationClick, onSuggest }: MessageLis
           {messages.map((msg) => (
             <MessageBubble key={msg.id} message={msg} onCitationClick={onCitationClick} />
           ))}
+          {isAwaiting && <ThinkingBubble />}
         </div>
         <div ref={bottomRef} />
       </div>

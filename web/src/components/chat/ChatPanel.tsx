@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Menu } from "lucide-react";
+import { Loader2, Menu } from "lucide-react";
 import { getConversation } from "@/lib/api";
+import { useConversation } from "@/hooks/useConversation";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -12,18 +13,18 @@ import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
 import { useChatWithCitations } from "@/hooks/useChatWithCitations";
 import type { ActiveCitation } from "@/types/chat";
-import type { ConversationWithMessages } from "@/types/api";
 
 interface ChatPanelProps {
   conversationId: string;
-  initialData: ConversationWithMessages;
 }
 
-export function ChatPanel({ conversationId, initialData }: ChatPanelProps) {
+export function ChatPanel({ conversationId }: ChatPanelProps) {
   const router = useRouter();
-  const [title, setTitle] = useState(initialData.title);
+  const [title, setTitle] = useState("Loading…");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [activeCitation, setActiveCitation] = useState<ActiveCitation | null>(null);
+
+  const { data, isLoading, error, refetch } = useConversation(conversationId);
 
   const {
     chatMessages,
@@ -31,27 +32,36 @@ export function ChatPanel({ conversationId, initialData }: ChatPanelProps) {
     handleInputChange,
     handleSubmit,
     status,
+    isGenerating,
     stop,
     syncFromDb,
     setInput,
   } = useChatWithCitations({
     conversationId,
-    initialDbMessages: initialData.messages,
     onMessagesChange: async () => {
-      // After streaming, refetch from DB to get canonical version with citations
       try {
         const fresh = await getConversation(conversationId);
         setTitle(fresh.title);
         syncFromDb(fresh.messages);
       } catch {
-        // Backend may have been slow; title will update on next poll
+        // title will update on next poll
       }
     },
   });
 
-  // Poll for title update after first message (auto-titling is async)
+  // Seed messages once when conversation data first loads
+  const seeded = useRef(false);
   useEffect(() => {
-    if (title !== "New chat") return;
+    if (data && !seeded.current) {
+      seeded.current = true;
+      setTitle(data.title);
+      syncFromDb(data.messages);
+    }
+  }, [data, syncFromDb]);
+
+  // Poll for auto-generated title after first user message
+  useEffect(() => {
+    if (title === "New chat" || title === "Loading…") return;
     const hasUserMessage = chatMessages.some((m) => m.role === "user");
     if (!hasUserMessage) return;
 
@@ -82,11 +92,35 @@ export function ChatPanel({ conversationId, initialData }: ChatPanelProps) {
     return () => window.removeEventListener("keydown", handler);
   }, [router]);
 
-  const handleSuggest = useCallback((text: string) => {
-    setInput(text);
-  }, [setInput]);
+  const handleSuggest = useCallback((text: string) => setInput(text), [setInput]);
 
-  const isStreaming = status === "streaming";
+  function renderMessages() {
+    if (isLoading) {
+      return (
+        <div className="flex flex-1 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      );
+    }
+    if (error) {
+      return (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3">
+          <p className="text-sm text-muted-foreground">Failed to load conversation</p>
+          <Button variant="outline" size="sm" onClick={refetch}>
+            Try again
+          </Button>
+        </div>
+      );
+    }
+    return (
+      <MessageList
+        messages={chatMessages}
+        onCitationClick={(c) => setActiveCitation(c)}
+        onSuggest={handleSuggest}
+        isAwaiting={status === "submitted"}
+      />
+    );
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -104,11 +138,7 @@ export function ChatPanel({ conversationId, initialData }: ChatPanelProps) {
       </header>
 
       {/* Messages */}
-      <MessageList
-        messages={chatMessages}
-        onCitationClick={(c) => setActiveCitation(c)}
-        onSuggest={handleSuggest}
-      />
+      {renderMessages()}
 
       {/* Input */}
       <div className="border-t border-border bg-background px-4 py-3">
@@ -118,7 +148,8 @@ export function ChatPanel({ conversationId, initialData }: ChatPanelProps) {
             onInputChange={handleInputChange}
             onSubmit={handleSubmit}
             onStop={stop}
-            isStreaming={isStreaming}
+            isStreaming={isGenerating}
+            disabled={isLoading || !!error}
           />
           <p className="mt-2 text-center text-[10px] text-muted-foreground/50">
             Answers are grounded in scripture · Verify important claims

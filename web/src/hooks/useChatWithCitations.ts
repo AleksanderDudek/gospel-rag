@@ -8,7 +8,7 @@ import type { MessageRecord } from "@/types/api";
 
 interface UseChatWithCitationsOptions {
   conversationId: string;
-  initialDbMessages: MessageRecord[];
+  initialDbMessages?: MessageRecord[];
   onMessagesChange?: () => void;
 }
 
@@ -32,7 +32,7 @@ function dbMsgToAiMsg(m: MessageRecord): Message {
 
 export function useChatWithCitations({
   conversationId,
-  initialDbMessages,
+  initialDbMessages = [],
   onMessagesChange,
 }: UseChatWithCitationsOptions) {
   const metaRef = useRef<Map<string, MessageMeta>>(
@@ -62,6 +62,7 @@ export function useChatWithCitations({
     stop,
     setMessages,
     data,
+    error,
   } = useChat({
     api: `/api/proxy/conversations/${conversationId}/messages`,
     streamProtocol: "data",
@@ -151,6 +152,8 @@ export function useChatWithCitations({
     [setMessages],
   );
 
+  const isGenerating = status === "submitted" || status === "streaming";
+
   return {
     chatMessages,
     input,
@@ -158,6 +161,8 @@ export function useChatWithCitations({
     handleInputChange,
     handleSubmit,
     status,
+    isGenerating,
+    error,
     stop,
     lastCitations,
     syncFromDb,

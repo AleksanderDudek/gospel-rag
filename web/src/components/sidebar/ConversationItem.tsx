@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,8 +23,13 @@ export function ConversationItem({
   onDelete,
 }: ConversationItemProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const pathname = usePathname();
+  const [isNavigating, setIsNavigating] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+
+  useEffect(() => {
+    setIsNavigating(false);
+  }, [pathname]);
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [titleInput, setTitleInput] = useState(conversation.title);
@@ -51,19 +56,23 @@ export function ConversationItem({
         className={cn(
           "group relative flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent",
           isActive && "bg-accent text-accent-foreground",
-          isPending && "opacity-60",
+          isNavigating && "opacity-60",
         )}
-        onClick={() => startTransition(() => router.push(`/c/${conversation.id}`))}
+        onClick={() => {
+          if (isActive) return;
+          setIsNavigating(true);
+          router.push(`/c/${conversation.id}`);
+        }}
         onMouseEnter={() => setShowMenu(true)}
         onMouseLeave={() => setShowMenu(false)}
       >
         <span className="flex-1 truncate text-sidebar-foreground">{conversation.title}</span>
 
-        {isPending && (
+        {isNavigating && (
           <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
         )}
 
-        {!isPending && showMenu && (
+        {!isNavigating && showMenu && (
           <div
             className="flex items-center gap-0.5"
             onClick={(e) => e.stopPropagation()}

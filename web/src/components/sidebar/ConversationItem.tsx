@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -23,6 +23,7 @@ export function ConversationItem({
   onDelete,
 }: ConversationItemProps) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [showMenu, setShowMenu] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -50,14 +51,19 @@ export function ConversationItem({
         className={cn(
           "group relative flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent",
           isActive && "bg-accent text-accent-foreground",
+          isPending && "opacity-60",
         )}
-        onClick={() => router.push(`/c/${conversation.id}`)}
+        onClick={() => startTransition(() => router.push(`/c/${conversation.id}`))}
         onMouseEnter={() => setShowMenu(true)}
         onMouseLeave={() => setShowMenu(false)}
       >
         <span className="flex-1 truncate text-sidebar-foreground">{conversation.title}</span>
 
-        {showMenu && (
+        {isPending && (
+          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
+        )}
+
+        {!isPending && showMenu && (
           <div
             className="flex items-center gap-0.5"
             onClick={(e) => e.stopPropagation()}

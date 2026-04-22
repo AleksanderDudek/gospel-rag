@@ -1,35 +1,48 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { createConversation } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 
 export function NewChatButton() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
-  async function handleNew() {
-    if (loading) return;
-    setLoading(true);
-    try {
-      const conv = await createConversation();
-      router.push(`/c/${conv.id}`);
-    } finally {
-      setLoading(false);
-    }
+  function handleNew() {
+    if (isLoading) return;
+    setIsLoading(true);
+    setError(null);
+    createConversation()
+      .then((conv) => {
+        router.push(`/c/${conv.id}`);
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err : new Error(String(err)));
+      })
+      .finally(() => setIsLoading(false));
   }
 
   return (
-    <Button
-      onClick={handleNew}
-      disabled={loading}
-      className="w-full justify-start gap-2"
-      variant="ghost"
-    >
-      <Plus className="h-4 w-4" />
-      New chat
-    </Button>
+    <div className="flex flex-col gap-1">
+      <Button
+        onClick={handleNew}
+        disabled={isLoading}
+        className="w-full justify-start gap-2"
+        variant="ghost"
+      >
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Plus className="h-4 w-4" />
+        )}
+        New chat
+      </Button>
+      {error && (
+        <p className="px-2 text-xs text-destructive">{error.message}</p>
+      )}
+    </div>
   );
 }

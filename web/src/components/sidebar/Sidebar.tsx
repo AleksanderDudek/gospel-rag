@@ -7,7 +7,7 @@ import { ConversationList } from "./ConversationList";
 import { NewChatButton } from "./NewChatButton";
 
 export function Sidebar() {
-  const { conversations, loading, rename, remove } = useConversations();
+  const { conversations, isLoading, error, refetch, rename, remove } = useConversations();
 
   return (
     <aside className="flex h-full w-[260px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
@@ -28,7 +28,9 @@ export function Sidebar() {
       <div className="flex-1 overflow-y-auto">
         <ConversationList
           conversations={conversations}
-          loading={loading}
+          isLoading={isLoading}
+          error={error}
+          onRefetch={refetch}
           onRename={rename}
           onDelete={remove}
         />

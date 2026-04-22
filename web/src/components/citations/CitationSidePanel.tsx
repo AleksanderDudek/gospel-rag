@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { BOOK_NAMES, formatCitationLabel } from "@/lib/citations";
+import { useFetchVerse } from "@/hooks/useFetchVerse";
 import type { ActiveCitation } from "@/types/chat";
 
 interface CitationSidePanelProps {
@@ -11,10 +13,8 @@ interface CitationSidePanelProps {
 }
 
 export function CitationSidePanel({ citation, onClose }: CitationSidePanelProps) {
-  const [fetchedText, setFetchedText] = useState<string | null>(null);
-  const [fetching, setFetching] = useState(false);
+  const { text, isLoading, error } = useFetchVerse(citation);
 
-  // Close on Escape
   useEffect(() => {
     function handler(e: KeyboardEvent) {
       if (e.key === "Escape" && citation) onClose();
@@ -23,25 +23,7 @@ export function CitationSidePanel({ citation, onClose }: CitationSidePanelProps)
     return () => globalThis.removeEventListener("keydown", handler);
   }, [citation, onClose]);
 
-  // Fetch verse text from backend when citation has no stored text
-  useEffect(() => {
-    if (!citation || citation.text) {
-      setFetchedText(null);
-      return;
-    }
-    setFetchedText(null);
-    setFetching(true);
-    const { book, chapter, verse_start, translation } = citation;
-    fetch(
-      `/api/proxy/verses/${book}/${chapter}/${verse_start}?translation=${translation}`
-    )
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => setFetchedText(data?.text ?? ""))
-      .catch(() => setFetchedText(""))
-      .finally(() => setFetching(false));
-  }, [citation]);
-
-  const displayText = citation?.text || fetchedText;
+  const displayText = citation?.text ?? text;
 
   return (
     <Sheet open={!!citation} onOpenChange={(open) => !open && onClose()}>
@@ -57,15 +39,21 @@ export function CitationSidePanel({ citation, onClose }: CitationSidePanelProps)
               </p>
             </SheetHeader>
 
-            {fetching && (
-              <p className="text-sm text-muted-foreground animate-pulse">Loading verse…</p>
+            {isLoading && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading verse…
+              </div>
             )}
-            {!fetching && displayText && (
+            {!isLoading && error && (
+              <p className="text-sm text-destructive">{error.message}</p>
+            )}
+            {!isLoading && !error && displayText && (
               <blockquote className="border-l-2 border-primary pl-4 text-sm italic leading-relaxed text-foreground">
                 &ldquo;{displayText}&rdquo;
               </blockquote>
             )}
-            {!fetching && !displayText && (
+            {!isLoading && !error && !displayText && (
               <p className="text-sm text-muted-foreground">Verse not found.</p>
             )}
           </>

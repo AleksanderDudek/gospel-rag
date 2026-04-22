@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Menu } from "lucide-react";
 import { getConversation } from "@/lib/api";
 import { useConversation } from "@/hooks/useConversation";
+import { useTitlePoller } from "@/hooks/useTitlePoller";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -20,7 +21,6 @@ interface ChatPanelProps {
 
 export function ChatPanel({ conversationId }: ChatPanelProps) {
   const router = useRouter();
-  const [title, setTitle] = useState("Loading…");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [activeCitation, setActiveCitation] = useState<ActiveCitation | null>(null);
 
@@ -38,15 +38,22 @@ export function ChatPanel({ conversationId }: ChatPanelProps) {
     setInput,
   } = useChatWithCitations({
     conversationId,
-    onMessagesChange: async () => {
-      try {
-        const fresh = await getConversation(conversationId);
-        setTitle(fresh.title);
-        syncFromDb(fresh.messages);
-      } catch {
-        // title will update on next poll
-      }
+    onMessagesChange: () => {
+      getConversation(conversationId)
+        .then((fresh) => {
+          setTitle(fresh.title);
+          syncFromDb(fresh.messages);
+        })
+        .catch(() => {
+          // title will update via poller on next tick
+        });
     },
+  });
+
+  const { title, setTitle } = useTitlePoller({
+    conversationId,
+    initialTitle: data?.title ?? "Loading…",
+    chatMessages,
   });
 
   // Seed messages once when conversation data first loads
@@ -54,31 +61,9 @@ export function ChatPanel({ conversationId }: ChatPanelProps) {
   useEffect(() => {
     if (data && !seeded.current) {
       seeded.current = true;
-      setTitle(data.title);
       syncFromDb(data.messages);
     }
   }, [data, syncFromDb]);
-
-  // Poll for auto-generated title after first user message
-  useEffect(() => {
-    if (title === "New chat" || title === "Loading…") return;
-    const hasUserMessage = chatMessages.some((m) => m.role === "user");
-    if (!hasUserMessage) return;
-
-    const timer = setInterval(async () => {
-      try {
-        const fresh = await getConversation(conversationId);
-        if (fresh.title !== "New chat") {
-          setTitle(fresh.title);
-          clearInterval(timer);
-        }
-      } catch {
-        clearInterval(timer);
-      }
-    }, 2000);
-
-    return () => clearInterval(timer);
-  }, [conversationId, title, chatMessages]);
 
   // ⌘K / Ctrl+K → new chat
   useEffect(() => {

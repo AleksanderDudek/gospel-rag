@@ -27,27 +27,40 @@ export function ConversationItem({
   const [isNavigating, setIsNavigating] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
 
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [titleInput, setTitleInput] = useState(conversation.title);
+  const [renameLoading, setRenameLoading] = useState(false);
+  const [renameError, setRenameError] = useState<Error | null>(null);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<Error | null>(null);
+
   useEffect(() => {
     setIsNavigating(false);
   }, [pathname]);
-  const [renameOpen, setRenameOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [titleInput, setTitleInput] = useState(conversation.title);
-  const [busy, setBusy] = useState(false);
 
-  async function handleRename() {
+  function handleRename() {
     if (!titleInput.trim()) return;
-    setBusy(true);
-    await onRename(conversation.id, titleInput.trim());
-    setRenameOpen(false);
-    setBusy(false);
+    setRenameLoading(true);
+    setRenameError(null);
+    onRename(conversation.id, titleInput.trim())
+      .then(() => setRenameOpen(false))
+      .catch((err: unknown) => {
+        setRenameError(err instanceof Error ? err : new Error(String(err)));
+      })
+      .finally(() => setRenameLoading(false));
   }
 
-  async function handleDelete() {
-    setBusy(true);
-    await onDelete(conversation.id);
-    setDeleteOpen(false);
-    setBusy(false);
+  function handleDelete() {
+    setDeleteLoading(true);
+    setDeleteError(null);
+    onDelete(conversation.id)
+      .then(() => setDeleteOpen(false))
+      .catch((err: unknown) => {
+        setDeleteError(err instanceof Error ? err : new Error(String(err)));
+      })
+      .finally(() => setDeleteLoading(false));
   }
 
   return (
@@ -98,7 +111,7 @@ export function ConversationItem({
       </div>
 
       {/* Rename dialog */}
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+      <Dialog open={renameOpen} onOpenChange={(open) => { setRenameOpen(open); setRenameError(null); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Rename conversation</DialogTitle>
@@ -109,15 +122,20 @@ export function ConversationItem({
             onKeyDown={(e) => e.key === "Enter" && handleRename()}
             autoFocus
           />
+          {renameError && (
+            <p className="text-xs text-destructive">{renameError.message}</p>
+          )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setRenameOpen(false)}>Cancel</Button>
-            <Button onClick={handleRename} disabled={busy}>Rename</Button>
+            <Button onClick={handleRename} disabled={renameLoading}>
+              {renameLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Rename"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirmation dialog */}
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      {/* Delete dialog */}
+      <Dialog open={deleteOpen} onOpenChange={(open) => { setDeleteOpen(open); setDeleteError(null); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete conversation?</DialogTitle>
@@ -125,9 +143,14 @@ export function ConversationItem({
           <p className="text-sm text-muted-foreground">
             This will permanently delete &ldquo;{conversation.title}&rdquo; and all its messages.
           </p>
+          {deleteError && (
+            <p className="text-xs text-destructive">{deleteError.message}</p>
+          )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={busy}>Delete</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteLoading}>
+              {deleteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

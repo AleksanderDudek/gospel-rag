@@ -3,31 +3,47 @@
 import { useParams } from "next/navigation";
 import { groupByDate } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { ConversationItem } from "./ConversationItem";
 import type { Conversation } from "@/types/api";
 
 interface ConversationListProps {
   conversations: Conversation[];
-  loading: boolean;
+  isLoading: boolean;
+  error: Error | null;
+  onRefetch: () => void;
   onRename: (id: string, title: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
 export function ConversationList({
   conversations,
-  loading,
+  isLoading,
+  error,
+  onRefetch,
   onRename,
   onDelete,
 }: ConversationListProps) {
   const params = useParams();
   const activeId = params?.id as string | undefined;
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex flex-col gap-1 p-2">
         {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-8 w-full" />
         ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-2 px-3 py-4">
+        <p className="text-xs text-destructive">Failed to load chats</p>
+        <Button variant="outline" size="sm" onClick={onRefetch}>
+          Try again
+        </Button>
       </div>
     );
   }

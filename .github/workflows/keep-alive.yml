@@ -3,7 +3,7 @@ name: Keep Alive
 # Ping the API every 14 minutes to prevent Render free-tier idle spin-down (threshold: 15 min).
 on:
   schedule:
-    - cron: "*/14 * * * *"
+    - cron: "*/10 * * * *"
   workflow_dispatch: # allow manual trigger
 
 jobs:
